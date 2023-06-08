@@ -6,12 +6,16 @@ ADD ./api/src /api/
 WORKDIR /api
 
 RUN apk update && apk add --no-cache git ca-certificates && \
+    if [ -f go.mod ]; then rm go.mod; fi && \
+    if [ -f go.sum ]; then rm go.sum; fi && \
     go mod init knocker && go mod tidy && CGO_ENABLED=0 go build -ldflags="-s -w" -o main .
+
 
 # Конечный образ
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 COPY --from=builder /api/main .
+COPY ./api/src/.env .
 
 CMD ["./main"]
