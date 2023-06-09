@@ -2,7 +2,7 @@ FROM postgres:13.3
 
 # Очищаем директорию перед инициализацией кластера
 RUN rm -rf /var/lib/postgresql/data/*
-COPY ./postgresql/create_tables.sql /docker-entrypoint-initdb.d/create_tables.sql
+COPY ./build/create_tables.sql /docker-entrypoint-initdb.d/create_tables.sql
 
 # Создаем том
 VOLUME /var/lib/postgresql/data

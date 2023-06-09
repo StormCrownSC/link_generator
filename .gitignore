@@ -8,7 +8,7 @@
 # Binaries for programs and plugins
 go.mod
 go.sum
-postgresql/data
+build/data
 
 *.exe
 *.exe~

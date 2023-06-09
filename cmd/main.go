@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"net/http"
+	"fmt"
 
 	"github.com/joho/godotenv"
 )

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"os"
-	"fmt"
 	"errors"
 
 	_ "github.com/lib/pq"
@@ -16,8 +14,8 @@ func IsShortLinkUnique(shortLink string) bool {
 	case "postgres":
 		return IsShortLinkUniquePostgres(shortLink)
 	default:
-		fmt.Println("Invalid DB_TYPE specified in .env file")
-		os.Exit(1)
+		// fmt.Println("Invalid DB_TYPE specified in .env file")
+		return IsShortLinkUniqueMemory(shortLink)
 	}
 	return false
 }
@@ -29,8 +27,8 @@ func SaveLinkMapping(shortLink, originalLink string) error {
 	case "postgres":
 		return SaveLinkMappingPostgres(shortLink, originalLink)
 	default:
-		fmt.Println("Invalid DB_TYPE specified in .env file")
-		os.Exit(1)
+		// fmt.Println("Invalid DB_TYPE specified in .env file")
+		return SaveLinkMappingMemory(shortLink, originalLink)
 	}
 	return errors.New("Не выбран тип бд")
 }
@@ -42,8 +40,8 @@ func IsOriginalLinkExists(originalLink string) (string, bool, error) {
 	case "postgres":
 		return IsOriginalLinkExistsPostgres(originalLink)
 	default:
-		fmt.Println("Invalid DB_TYPE specified in .env file")
-		os.Exit(1)
+		// fmt.Println("Invalid DB_TYPE specified in .env file")
+		return IsOriginalLinkExistsMemory(originalLink)
 	}
 	return "", true, errors.New("Не выбран тип бд")
 }
@@ -55,8 +53,8 @@ func GetOriginalLink(shortLink string) (string, error) {
 	case "postgres":
 		return GetOriginalLinkPostgres(shortLink)
 	default:
-		fmt.Println("Invalid DB_TYPE specified in .env file")
-		os.Exit(1)
+		// fmt.Println("Invalid DB_TYPE specified in .env file")
+		return GetOriginalLinkMemory(shortLink)
 	}
 	return "", errors.New("Не выбран тип бд")
 }

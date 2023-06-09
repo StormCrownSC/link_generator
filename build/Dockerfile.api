@@ -2,7 +2,8 @@
 FROM golang:1.20-alpine as builder
 
 RUN mkdir /api
-ADD ./api/src /api/
+ADD ./cmd /api/
+ADD ./internal /api/
 WORKDIR /api
 
 RUN apk update && apk add --no-cache git ca-certificates && \
@@ -16,6 +17,6 @@ FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 COPY --from=builder /api/main .
-COPY ./api/src/.env .
+COPY ./.env .
 
 CMD ["./main"]
