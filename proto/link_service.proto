@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package linkgenerator;
 
-option go_package = "github.com/StormCrownSC/link_generator/link_service;link_service";
+option go_package = "./proto";
 
 service LinkService {
   rpc ShortenLink(LinkRequest) returns (LinkResponse) {}

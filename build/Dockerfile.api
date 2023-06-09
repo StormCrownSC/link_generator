@@ -2,8 +2,10 @@
 FROM golang:1.20-alpine as builder
 
 RUN mkdir /api
+RUN mkdir /api/proto
 ADD ./cmd /api/
 ADD ./internal /api/
+ADD ./proto /api/proto/
 WORKDIR /api
 
 RUN apk update && apk add --no-cache git ca-certificates && \

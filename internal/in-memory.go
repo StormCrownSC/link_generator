@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+    "database/sql"
 )
 
 
@@ -31,5 +32,5 @@ func GetOriginalLinkMemory(shortLink string) (string, error) {
             return originalLink, nil
         }
     }
-    return "", fmt.Errorf("сокращенная ссылка не найдена")
+    return "", sql.ErrNoRows
 }

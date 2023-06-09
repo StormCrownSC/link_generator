@@ -96,7 +96,7 @@ func TestGetOriginalLinkMemory(t *testing.T) {
 	if err == nil {
 		t.Errorf("Test case 2 failed: Expected error, but got no error")
 	}
-	expectedErrMsg := "сокращенная ссылка не найдена"
+	expectedErrMsg := "sql: no rows in result set"
 	if err.Error() != expectedErrMsg {
 		t.Errorf("Test case 2 failed: Expected error message '%s', but got '%v'", expectedErrMsg, err.Error())
 	}
