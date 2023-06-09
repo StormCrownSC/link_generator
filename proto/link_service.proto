@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package linkgenerator;
+
+option go_package = "github.com/StormCrownSC/link_generator/link_service;link_service";
+
+service LinkService {
+  rpc ShortenLink(LinkRequest) returns (LinkResponse) {}
+  rpc ExpandLink(LinkRequest) returns (LinkResponse) {}
+}
+
+message LinkRequest {
+  string original_link = 1;
+}
+
+message LinkResponse {
+  string short_link = 1;
+  string error_message = 2;
+}
