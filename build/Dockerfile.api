@@ -1,24 +1,17 @@
-# Базовый образ
-FROM golang:1.20-alpine as builder
+FROM golang:1.21-alpine as gobuild
 
-RUN mkdir /api
-RUN mkdir /api/proto
-ADD ./cmd /api/
-ADD ./internal /api/
-ADD ./proto /api/proto/
-WORKDIR /api
+WORKDIR /app
 
-RUN apk update && apk add --no-cache git ca-certificates && \
-    if [ -f go.mod ]; then rm go.mod; fi && \
-    if [ -f go.sum ]; then rm go.sum; fi && \
-    go mod init knocker && go mod tidy && CGO_ENABLED=0 go build -ldflags="-s -w" -o main .
+COPY go.mod ./
+COPY go.sum ./
+RUN go mod download
+COPY . .
 
+RUN go build ./cmd/main.go
 
-# Конечный образ
 FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-WORKDIR /root/
-COPY --from=builder /api/main .
-COPY ./.env .
+WORKDIR /app
+
+COPY --from=gobuild /app .
 
 CMD ["./main"]

@@ -1,11 +1,11 @@
 package main
 
 import (
+	"Service/proto"
 	"context"
 	"fmt"
-	"log"
-	"knocker/proto"
 	"google.golang.org/grpc"
+	"log"
 )
 
 func main() {
