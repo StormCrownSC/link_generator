@@ -4,15 +4,8 @@ import (
 	"testing"
 )
 
-var (
-	dbType      string
-	linkMapping map[string]string
-)
-
 func TestGenerateShortLink(t *testing.T) {
 	// Mock functions for dependencies
-	dbType = "in-memory"
-	linkMapping = make(map[string]string)
 	var secondShortLink string
 
 	// Test case 1: Generate short link for a new original link
