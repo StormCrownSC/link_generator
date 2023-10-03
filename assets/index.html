@@ -5,6 +5,28 @@
     <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+    <form id="shorten-form" method="post" enctype="application/x-www-form-urlencoded">
+        <input type="text" name="url"/>
+        <input type="submit"/>
+    </form>
+    <p id="result"></p>
 
+    <script>
+        const form = document.querySelector('#shorten-form');
+        const result = document.querySelector('#result');
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const url = form.elements.url.value;
+            const response = await fetch('http://localhost:11000/shorten', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+            });
+            const data = await response.json();
+            result.textContent = data;
+        });
+    </script>
 </body>
 </html>
