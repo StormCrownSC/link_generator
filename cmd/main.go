@@ -3,12 +3,18 @@ package main
 import (
 	"Service/internal/handler"
 	"fmt"
-	"net/http"
+	"github.com/gin-gonic/contrib/static"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	fmt.Println("Start app")
-	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("assets"))))
-	http.HandleFunc("/shorten", handler.HandleLink)
-	http.ListenAndServe(":11000", nil)
+
+	r := gin.Default() // Creating a Gin Router
+
+	r.Use(static.Serve("/", static.LocalFile("./assets", true)))
+	r.POST("/shorten", handler.CreateLink)
+	r.GET("/shorten", handler.GetLink)
+
+	r.Run(":11000")
 }
