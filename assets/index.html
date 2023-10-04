@@ -6,7 +6,7 @@
 </head>
 <body>
     <form id="shorten-form" method="post" enctype="application/x-www-form-urlencoded">
-        <input type="text" name="url"/>
+        <input type="text" id="url" name="url"/>
         <input type="submit"/>
     </form>
     <p id="result"></p>
@@ -16,17 +16,21 @@
         const result = document.querySelector('#result');
 
         form.addEventListener('submit', async (event) => {
+            var url = document.getElementById("url").value;
             event.preventDefault();
-            const url = form.elements.url.value;
+            var request = {'url':url}
             const response = await fetch('http://localhost:11000/shorten', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
+                body: JSON.stringify(request),
             });
             const data = await response.json();
-            result.textContent = data;
-        });
+            result.innerHTML = data;
+            console.log(response)
+            console.log(data)
+        }); 
     </script>
 </body>
 </html>
