@@ -1,19 +1,34 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
-
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/lib/pq"
+	"os"
+)
+
+var (
+	dataSourceName = "host=link.postgres port=5432 user=admin password=admin dbname=LinkDB sslmode=disable"
 )
 
 func connectToDB() (*sql.DB, error) {
-	// Инициализация базы данных PostgreSQL
-	db, err := sql.Open("postgres", "host=link.postgres port=5432 user=admin password=admin dbname=LinkDB sslmode=disable")
+	// Инициализация базы данных PostgresSQL
+	db, err := sql.Open("postgres", dataSourceName)
 	if err != nil {
 		return nil, err
 	}
 	return db, nil
+}
+
+func connectDBPoll() (*pgxpool.Pool, error) {
+	pool, err := pgxpool.New(context.Background(), os.Getenv(dataSourceName))
+	if err != nil {
+		return nil, err
+	}
+	return pool, nil
+
 }
 
 func IsShortLinkUnique(shortLink string) bool {
@@ -36,7 +51,7 @@ func IsShortLinkUnique(shortLink string) bool {
 }
 
 func SaveLinkMapping(shortLink, originalLink string) error {
-	db, err := connectToDB()
+	db, err := connectDBPoll()
 	if err != nil {
 		fmt.Println("Failed to connect to the database:", err)
 		return err
@@ -44,8 +59,8 @@ func SaveLinkMapping(shortLink, originalLink string) error {
 	defer db.Close()
 
 	query := "INSERT INTO link_mapping (short_link, original_link) VALUES ($1, $2)"
-	_, err = db.Exec(query, shortLink, originalLink)
-	if err != nil {
+	pgxErr := db.QueryRow(context.Background(), query, shortLink, originalLink)
+	if pgxErr != nil {
 		fmt.Println("Failed to execute query:", err)
 		return err
 	}
@@ -56,7 +71,7 @@ func SaveLinkMapping(shortLink, originalLink string) error {
 
 func IsOriginalLinkExists(originalLink string) (string, bool, error) {
 	// Устанавливаем соединение с базой данных
-	db, err := connectToDB()
+	db, err := connectDBPoll()
 	if err != nil {
 		fmt.Println("Ошибка соединения с базой данных в isOriginalLinkExists:", err)
 		return "", false, err
@@ -66,7 +81,7 @@ func IsOriginalLinkExists(originalLink string) (string, bool, error) {
 	// Проверяем наличие оригинальной ссылки в базе данных
 	query := "SELECT short_link FROM link_mapping WHERE original_link = $1"
 	var shortLink string
-	err = db.QueryRow(query, originalLink).Scan(&shortLink)
+	err = db.QueryRow(context.Background(), query, originalLink).Scan(&shortLink)
 	if err != nil {
 		return "", false, nil
 	}
