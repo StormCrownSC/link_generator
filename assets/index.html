@@ -6,14 +6,21 @@
 </head>
 <body>
     <form id="shorten-form" method="post" enctype="application/x-www-form-urlencoded">
+        <p>Сгененрировать короткую ссылку</p>
         <input type="text" id="url" name="url"/>
-        <input type="submit"/>
+        <input type="submit" id="subshot"></input>
     </form>
-    <p id="result"></p>
+    <p id="resultsh"></p>
+    <form id="long-form" method="get" enctype="application/x-www-form-urlencoded">
+        <p>Получить полную ссылку</p>
+        <input type="text" id="shot_url" name="shot_url"/>
+        <input type="submit" id="sublong"/>
+    </form>
+    <p id="resultlong"></p>
 
     <script>
         const form = document.querySelector('#shorten-form');
-        const result = document.querySelector('#result');
+        const resultsh = document.querySelector('#resultsh');
 
         form.addEventListener('submit', async (event) => {
             var url = document.getElementById("url").value;
@@ -22,13 +29,29 @@
             const response = await fetch('http://localhost:11000/shorten', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(request),
             });
             const data = await response.json();
-            result.innerHTML = data;
-            console.log(response)
+            resultsh.innerHTML = "<a href=" + url + ">" + data.Shorten + "  </a>";
+            console.log(data.Shorten)
+        }); 
+
+        const longform = document.querySelector('#long-form');
+        const resultlong = document.querySelector('#resultlong');
+
+        longform.addEventListener('submit', async (event) => {
+            var shot_url = document.getElementById("shot_url").value;
+            event.preventDefault();
+            const response = await fetch('http://localhost:11000/shorten?shortlink=' + shot_url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            });
+            const data = await response.json();
+            resultlong.innerHTML = "<a href=" + data.Link + ">" + data.Link + " </a>";
             console.log(data)
         }); 
     </script>
