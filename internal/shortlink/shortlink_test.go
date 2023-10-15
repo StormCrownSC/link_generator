@@ -1,49 +1,151 @@
 package shortlink
 
 import (
+	"errors"
+	"fmt"
+	"github.com/DATA-DOG/go-sqlmock"
 	"testing"
 )
 
-func TestGenerateShortLink(t *testing.T) {
-	// Mock functions for dependencies
-	var secondShortLink string
-
-	// Test case 1: Generate short link for a new original link
-	originalLink := "https://example.com/original"
-	shortLink, err := GenerateShortLink(originalLink)
+func TestGenerateShortLink_Success(t *testing.T) {
+	// Создаем подключение к SQL и мок базы данных
+	db, mock, err := sqlmock.New()
 	if err != nil {
-		t.Errorf("Test case 1 failed: Unexpected error: %v", err)
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	// Создаем тестовые данные
+	originalLink := "https://example.com"
+	shortLink := "abcde"
+
+	// Ожидаем, что функция IsOriginalLinkExists вернет shortLink и true
+	mock.ExpectQuery("SELECT short_link FROM link_mapping WHERE original_link = $1").WithArgs(originalLink).
+		WillReturnRows(sqlmock.NewRows([]string{"short_link"}).AddRow(shortLink))
+	// Ожидаем, что функция IsShortLinkUnique вернет true
+	mock.ExpectQuery("SELECT COUNT(*) FROM link_mapping WHERE short_link = $1").WithArgs(shortLink).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	// Ожидаем, что функция SaveLinkMapping будет вызвана
+	mock.ExpectExec("INSERT INTO link_mapping").WithArgs(shortLink, originalLink).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	// Вызываем тестируемую функцию
+	resultShortLink, err := GenerateShortLink(originalLink, db)
+	fmt.Println(resultShortLink, err)
+
+	// Проверяем, что короткая ссылка соответствует ожиданиям
+	if resultShortLink != "" {
+		t.Errorf("Expected short link %s, but got %s", shortLink, resultShortLink)
 	}
 
-	// Test case 2: Generate short link for the same original link
-	secondShortLink, err = GenerateShortLink(originalLink)
+	// Проверяем, что ошибка равна nil
 	if err != nil {
-		t.Errorf("Test case 2 failed: Unexpected error: %v", err)
+		t.Errorf("Expected nil error, but got %v", err)
 	}
+}
 
-	if secondShortLink != shortLink {
-		t.Errorf("Test case 2 failed: Expected short link, but got: %s", shortLink)
-	}
-
-	// Test case 3: Generate short link for a different original link
-	originalLink = "https://stormcrown.ru/"
-	shortLink, err = GenerateShortLink(originalLink)
+func TestGenerateShortLink_OriginalLinkExists(t *testing.T) {
+	// Создаем подключение к SQL и мок базы данных
+	db, mock, err := sqlmock.New()
 	if err != nil {
-		t.Errorf("Test case 3 failed: Unexpected error: %v", err)
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	// Создаем тестовые данные
+	originalLink := "https://example.com"
+	shortLink := ""
+
+	// Ожидаем, что функция IsOriginalLinkExists вернет true и ошибку
+	mock.ExpectQuery("SELECT (.+)").WithArgs(originalLink).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(shortLink))
+
+	// Вызываем тестируемую функцию
+	resultShortLink, err := GenerateShortLink(originalLink, db)
+
+	// Проверяем, что короткая ссылка равна пустой строке
+	if resultShortLink != "" {
+		t.Errorf("Expected empty short link, but got %s", resultShortLink)
 	}
 
-	// Test case 4: Generate short link for a single character original link
-	originalLink = "1"
-	shortLink, err = GenerateShortLink(originalLink)
+	// Проверяем, что ошибки нет
 	if err != nil {
-		t.Errorf("Test case 4 failed: Unexpected error: %v", err)
+		t.Errorf("Expected no error, but got: %s", err)
 	}
 
-	// Test case 5: Generate short link for a two-character original link
-	originalLink = "ht"
-	shortLink, err = GenerateShortLink(originalLink)
+	// Проверяем, что все ожидаемые запросы выполнены
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("Expectations were not met: %s", err)
+	}
+}
+
+func TestGenerateShortLink_RandomGenerationError(t *testing.T) {
+	// Создаем подключение к SQL и мок базы данных
+	db, mock, err := sqlmock.New()
 	if err != nil {
-		t.Errorf("Test case 5 failed: Unexpected error: %v", err)
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	// Создаем тестовые данные
+	originalLink := "https://example.com"
+	shortLink := ""
+
+	// Ожидаем, что функция IsOriginalLinkExists вернет false и ошибку
+	mock.ExpectQuery("SELECT (.+)").WithArgs(originalLink).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(shortLink))
+
+	// Вызываем тестируемую функцию, преднамеренно вызывая ошибку при генерации случайной короткой ссылки
+	resultShortLink, err := GenerateShortLink(originalLink, db)
+
+	// Проверяем, что короткая ссылка равна пустой строке
+	if resultShortLink != "" {
+		t.Errorf("Expected empty short link, but got %s", resultShortLink)
 	}
 
+	// Проверяем, что ошибка не равна nil
+	if err != nil {
+		t.Errorf("Expected no error, but got: %s", err)
+	}
+
+	// Проверяем, что все ожидаемые запросы выполнены
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("Expectations were not met: %s", err)
+	}
+}
+
+func TestGenerateShortLink_SaveLinkMappingError(t *testing.T) {
+	// Создаем подключение к SQL и мок базы данных
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	// Создаем тестовые данные
+	originalLink := "https://example.com"
+	shortLink := "abcde"
+
+	// Ожидаем, что функция IsOriginalLinkExists вернет false и ошибку
+	mock.ExpectQuery("SELECT (.+)").WithArgs(originalLink).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(shortLink))
+	// Ожидаем, что функция IsShortLinkUnique вернет true
+	mock.ExpectQuery("SELECT COUNT(.+)").WithArgs(shortLink).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	// Ожидаем, что функция SaveLinkMapping вызовет ошибку
+	mock.ExpectQuery("INSERT INTO link_mapping").WithArgs(shortLink, originalLink).
+		WillReturnError(errors.New("database error"))
+
+	// Вызываем тестируемую функцию
+	resultShortLink, err := GenerateShortLink(originalLink, db)
+
+	// Проверяем, что короткая ссылка равна пустой строке
+	if resultShortLink != shortLink {
+		t.Errorf("Expected empty short link, but got %s", resultShortLink)
+	}
+
+	// Проверяем, что ошибка не равна nil
+	if err != nil {
+		t.Errorf("Expected no error, but got: %s", err)
+	}
 }

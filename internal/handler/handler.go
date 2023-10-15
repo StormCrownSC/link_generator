@@ -13,7 +13,7 @@ type RequestBody struct {
 	Url string `json:"url"`
 }
 
-func CreateLink(c *gin.Context) {
+func CreateLink(c *gin.Context, db *sql.DB) {
 	var request RequestBody
 	if err := c.BindJSON(&request); err != nil {
 		fmt.Println(err, request)
@@ -28,7 +28,7 @@ func CreateLink(c *gin.Context) {
 		return
 	}
 
-	shortLink, err := shortlink.GenerateShortLink(originalLink)
+	shortLink, err := shortlink.GenerateShortLink(originalLink, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Generate shorten url"})
 		return
@@ -41,7 +41,7 @@ func CreateLink(c *gin.Context) {
 
 }
 
-func GetLink(c *gin.Context) {
+func GetLink(c *gin.Context, db *sql.DB) {
 	// Extracting the request parameters
 	shortLink := c.Query("shortlink")
 	if shortLink == "" {
@@ -49,7 +49,7 @@ func GetLink(c *gin.Context) {
 		return
 	}
 
-	originalLink, err := database.GetOriginalLink(shortLink)
+	originalLink, err := database.GetOriginalLink(shortLink, db)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusNotFound, gin.H{"Error": "Url not found"})
