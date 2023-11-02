@@ -105,7 +105,6 @@ func StartServer() {
 						}
 						close(originals)
 					}()
-					// Возвращаем роботов
 					return flux.Create(func(_ context.Context, s flux.Sink) {
 						for original := range originals {
 							s.Next(payload.NewString(original, ""))
