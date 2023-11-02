@@ -35,22 +35,9 @@ services:
     tty: true
     ports:
      - "11000:11000"
+     - "12000:11000"
     env_file:
       - .env
-    healthcheck:
-      test: curl -sS http://api.link:11000/shorten || echo 1
-      interval: 10s
-      timeout: 10s
     depends_on:
       postgres:
         condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: '0.4'
-          memory: '4g'
-      restart_policy:
-        condition: on-failure
-        delay: 2s
-        max_attempts: 3
-        window: 10m

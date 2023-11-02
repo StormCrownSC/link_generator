@@ -6,13 +6,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
-	"net/http"
-	"server/pg"
-	"sync"
-	"utils"
-
 	"github.com/gin-gonic/gin"
+	"log"
+	"sync"
+
+	"github.com/gin-gonic/contrib/static"
 	"github.com/rsocket/rsocket-go"
 	"github.com/rsocket/rsocket-go/payload"
 	"github.com/rsocket/rsocket-go/rx/flux"
@@ -24,146 +22,109 @@ type RequestBody struct {
 }
 
 func StartServer() {
-	db := pg.СonnectToDB()
+	db, err := database.ConnectToDB()
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	r := gin.Default()
+	r.Use(static.Serve("/", static.LocalFile("./assets", true)))
+	r.Run(":12000")
 
 	// Rsocket
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		err := rsocket.Receive().
-			OnStart(func() {
-				log.Println("Server Started")
-			}).
-			Acceptor(func(_ context.Context, _ payload.SetupPayload, _ rsocket.CloseableRSocket) (rsocket.RSocket, error) {
-				return rsocket.NewAbstractSocket(
-					// Request-Response
-					rsocket.RequestResponse(func(c payload.Payload) mono.Mono {
-						// Получить ID - вернуть робота с таким ID
-						var request RequestBody
-						if err := c.BindJSON(&request); err != nil {
-							fmt.Println(err, request)
-							c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid request format"})
-							return
-						}
+		defer wg.Done()
+		err := rsocket.Receive().OnStart(func() {
+			log.Println("Server Started")
+		}).Acceptor(func(_ context.Context, _ payload.SetupPayload, _ rsocket.CloseableRSocket) (rsocket.RSocket, error) {
+			return rsocket.NewAbstractSocket(
+				// Request-Response
+				rsocket.RequestResponse(func(c payload.Payload) mono.Mono {
+					// Извлечение параметра "url" из тела запроса
+					originalLink := c.DataUTF8()
+					if originalLink == "" {
+						return mono.Error(fmt.Errorf("invalid url format"))
+					}
 
-						// Извлечение параметра "url" из тела запроса
-						originalLink := request.Url
-						if originalLink == "" {
-							c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid url format"})
-							return
-						}
+					shortLink, err := shortlink.GenerateShortLink(originalLink, db)
+					if err != nil {
+						return mono.Error(err)
+					}
 
-						shortLink, err := shortlink.GenerateShortLink(originalLink, db)
+					return mono.Just(payload.NewString(shortLink, ""))
+				}),
+
+				// Request-Stream
+				rsocket.RequestStream(func(c payload.Payload) flux.Flux {
+					allLink, err := database.GetAllLink(db)
+					if err != nil {
+						if err == sql.ErrNoRows {
+							return flux.Error(fmt.Errorf("url not found"))
+						} else {
+							return flux.Error(fmt.Errorf("with get original link"))
+						}
+					}
+
+					// Return a successful response
+					return flux.Create(func(_ context.Context, s flux.Sink) {
+						for _, link := range allLink {
+							s.Next(payload.NewString(link, ""))
+						}
+						s.Complete()
+					})
+				}),
+
+				// Request-Channel
+				rsocket.RequestChannel(func(c flux.Flux) flux.Flux {
+					shorts := make(chan string)
+					originals := make(chan string)
+
+					c.DoOnComplete(func() {
+						close(shorts)
+					}).DoOnNext(func(msg payload.Payload) error {
+						short := msg.DataUTF8()
 						if err != nil {
-							c.JSON(http.StatusInternalServerError, gin.H{"Error": "Generate shorten url"})
-							return
+							log.Fatalln(err)
+							return nil
 						}
+						shorts <- short
+						return nil
+					}).Subscribe(context.Background())
 
-						// Return a successful response
-						c.JSON(http.StatusOK, gin.H{
-							"Shorten": shortLink,
-						})
-					}),
-
-					// Request-Stream
-					rsocket.RequestStream(func(c payload.Payload) flux.Flux {
-						allLink, err := database.GetAllLink(db)
-						if err != nil {
-							if err == sql.ErrNoRows {
-								c.JSON(http.StatusNotFound, gin.H{"Error": "Url not found"})
-							} else {
-								c.JSON(http.StatusNotFound, gin.H{"Error": "with get original link"})
-							}
-							return
+					go func() {
+						for short := range shorts {
+							original, _ := database.GetOriginalLink(short, db)
+							originals <- original
 						}
-
-						// Return a successful response
-						c.JSON(http.StatusOK, gin.H{
-							"Link": allLink,
-						}),
-					}),
-
-					// Request-Channel
-					rsocket.RequestChannel(func(c flux.Flux) flux.Flux {
-						shortLink := c.Query("shortlink")
-						if shortLink == "" {
-							c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid url format"})
-							return
+						close(originals)
+					}()
+					// Возвращаем роботов
+					return flux.Create(func(_ context.Context, s flux.Sink) {
+						for original := range originals {
+							s.Next(payload.NewString(original, ""))
 						}
+						s.Complete()
+					})
+				}),
 
-						originalLink, err := database.GetOriginalLink(shortLink, db)
-						if err != nil {
-							if err == sql.ErrNoRows {
-								c.JSON(http.StatusNotFound, gin.H{"Error": "Url not found"})
-							} else {
-								c.JSON(http.StatusNotFound, gin.H{"Error": "with get original link"})
-							}
-							return
-						}
-
-						// Return a successful response
-						c.JSON(http.StatusOK, gin.H{
-							"Link": originalLink,
-						}),
-					}),
-
-					// Fire-and-forget
-					rsocket.FireAndForget(func(с payload.Payload) {
-						var request RequestBody
-						if err := c.BindJSON(&request); err != nil {
-							fmt.Println(err, request)
-							c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid request format"})
-							return
-						}
-
-						// Извлечение параметра "url" из тела запроса
-						originalLink := request.Url
-						if originalLink == "" {
-							c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid url format"})
-							return
-						}
-
+				// Fire-and-forget
+				rsocket.FireAndForget(func(c payload.Payload) {
+					originalLink := c.DataUTF8()
+					if originalLink != "" {
 						database.DeleteOriginalLink(originalLink, db)
-
-					}),
-
-					////////////////////////////////////////////////////////////////////////
-				), nil
-			}).
-			Transport(rsocket.TCPServer().SetAddr(":7878").Build()).
-			Serve(ctx)
+					}
+				}),
+			), nil
+		}).Transport(rsocket.TCPServer().SetAddr(":11000").Build()).Serve(ctx)
 
 		if err != nil {
 			log.Fatalln(err)
 		}
-		wg.Done()
 	}()
-	utils.EnterExit()
-	cancel()
 	wg.Wait()
-}
-
-func GetLink(c *gin.Context, db *sql.DB) {
-	// Extracting the request parameters
-	shortLink := c.Query("shortlink")
-	if shortLink == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid url format"})
-		return
-	}
-
-	originalLink, err := database.GetOriginalLink(shortLink, db)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			c.JSON(http.StatusNotFound, gin.H{"Error": "Url not found"})
-		} else {
-			c.JSON(http.StatusNotFound, gin.H{"Error": "with get original link"})
-		}
-		return
-	}
-
-	// Return a successful response
-	c.JSON(http.StatusOK, gin.H{
-		"Link": originalLink,
-	})
+	cancel()
 }
