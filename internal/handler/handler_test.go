@@ -2,11 +2,12 @@ package handler
 
 import (
 	"encoding/json"
-	"github.com/DATA-DOG/go-sqlmock"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/DATA-DOG/go-sqlmock"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"

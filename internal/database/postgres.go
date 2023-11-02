@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
+
 	_ "github.com/lib/pq"
 )
 
@@ -65,4 +66,26 @@ func GetOriginalLink(shortLink string, db *sql.DB) (string, error) {
 	}
 
 	return originalLink, nil
+}
+
+func GetAllLink(db *sql.DB) ([]string, error) {
+	// Получаем оригинальную ссылку из базы данных
+	query := "SELECT original_link FROM link_mapping"
+	var originalLink []string
+	err := db.QueryRow(query).Scan(&originalLink)
+	if err != nil {
+		return nil, err
+	}
+
+	return originalLink, nil
+}
+
+func DeleteOriginalLink(Link string, db *sql.DB) {
+	// Получаем оригинальную ссылку из базы данных
+	query := "DELETE FROM link_mapping WHERE short_link = $1"
+	err := db.QueryRow(query).Scan(&Link)
+	if err != nil {
+		fmt.Println(err)
+	}
+
 }
