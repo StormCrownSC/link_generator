@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>Link generator</title>
-    <link rel="stylesheet" href="style.css" />
+    <!-- <link rel="stylesheet" href="style.css" /> -->
 </head>
 <body>
     <form id="shorten-form" method="post" enctype="application/x-www-form-urlencoded">
@@ -10,32 +10,67 @@
         <input type="text" id="url" name="url"/>
         <input type="submit" id="subshot"></input>
     </form>
-    <p id="resultsh"></p>
+
+    <p id="resultsh"></p><br/>
     <form id="long-form" method="get" enctype="application/x-www-form-urlencoded">
         <p>Получить полную ссылку</p>
         <input type="text" id="shot_url" name="shot_url"/>
         <input type="submit" id="sublong"/>
     </form>
-    <p id="resultlong"></p>
+
+    <p id="resultlong"></p><br/>
+    <form id="all-link-form" method="get" enctype="application/x-www-form-urlencoded">
+        <p>Получить все ссылки</p>
+        <input type="submit" id="suball"></input>
+    </form>
+    <p id="resultall"></p><br/>
+
+    <form id="del-link-form" method="get" enctype="application/x-www-form-urlencoded">
+        <p>Ввведите полную ссылку для удаления из бд</p>
+        <input type="text" id="del_url" name="full_url"/>
+        <input type="submit" id="subdel"></input>
+    </form>
 
     <script>
         const form = document.querySelector('#shorten-form');
         const resultsh = document.querySelector('#resultsh');
 
+
+        let socket = new WebSocket("wss://localhost:11000");
+
+        socket.onopen = function(e) {
+            alert("[open] Соединение установлено");
+        };
+
+        socket.onclose = function(event) {
+        if (event.wasClean) {
+            alert(`[close] Соединение закрыто чисто`);
+        } else {
+            alert('[close] Соединение прервано');
+        }
+        };
+
+        socket.onerror = function(error) {
+        alert(`[error]`);
+        };
+
         form.addEventListener('submit', async (event) => {
             var url = document.getElementById("url").value;
             event.preventDefault();
             var request = {'url':url}
-            const response = await fetch('http://localhost:11000/shorten', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(request),
-            });
-            const data = await response.json();
-            resultsh.innerHTML = "<a href=" + url + ">" + data.Shorten + "  </a>";
-            console.log(data.Shorten)
+            socket.send(JSON.stringify(request))
+            socket.onmessage = (event) => {
+                let message = event.data;
+                resultsh.innerHTML = "<a href=" + url + ">" + message + "  </a>";
+                console.log(message)
+                socket.send(JSON.stringify(request))
+            socket.onmessage = (event) => {
+                let message = event.data;
+                resultsh.innerHTML = "<a href=" + url + ">" + message + "  </a>";
+                console.log(message)
+            };
+            };
+        
         }); 
 
         const longform = document.querySelector('#long-form');
