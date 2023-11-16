@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Service/internal/database"
 	"Service/internal/handler"
 	"fmt"
 )
@@ -8,5 +9,10 @@ import (
 func main() {
 	fmt.Println("Start app")
 
-	handler.StartServer()
+	db, err := database.ConnectToDB()
+	if err != nil {
+		return
+	}
+	defer db.Close()
+	handler.StartServer(db)
 }

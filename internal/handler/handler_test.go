@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	go StartServer()
+	go StartServer(nil)
 }
 
 func connect(t *testing.T) rsocket.Client {

@@ -18,13 +18,8 @@ type RequestBody struct {
 	Url string `json:"url"`
 }
 
-func StartServer() {
-	db, err := database.ConnectToDB()
-	if err != nil {
-		return
-	}
-	defer db.Close()
-
+func StartServer(db *sql.DB) {
+	var err error
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	ctx, cancel := context.WithCancel(context.Background())
