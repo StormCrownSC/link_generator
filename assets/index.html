@@ -7,7 +7,8 @@
 <form id="shorten-form" method="post" enctype="application/x-www-form-urlencoded">
     <p>Сгененрировать короткую ссылку</p>
     <input type="text" id="url" name="url"/>
-    <input type="submit" id="subshot"></input>
+    <input type="submit" id="subshot"/>
+
 </form>
 
 <p id="resultsh"></p><br/>
@@ -15,6 +16,7 @@
     <p>Получить полную ссылку</p>
     <input type="text" id="shot_url" name="shot_url"/>
     <input type="submit" id="sublong"/>
+
 </form>
 
 <p id="resultlong"></p><br/>
@@ -31,45 +33,55 @@
 </form>
 
 <script>
-    const form = document.querySelector('#shorten-form');
+     const form = document.querySelector('#shorten-form');
     const resultsh = document.querySelector('#resultsh');
 
+    const { RSocketClient } = require('rsocket-core');
+    const RSocketWebsocketClient = require('rsocket-websocket-client').default;
+    const WebSocket = require('ws');
 
-    let socket = new WebSocket("wss://localhost:11000");
+    function now() {
+        return new Date().getTime();
+    }
 
-    socket.onopen = function(e) {
-        alert("[open] Соединение установлено");
-    };
-
-    socket.onclose = function(event) {
-        if (event.wasClean) {
-            alert(`[close] Соединение закрыто чисто`);
-        } else {
-            alert('[close] Соединение прервано');
-        }
-    };
-
-    socket.onerror = function(error) {
-        alert(`[error]`);
-    };
+    async function connect(options) {
+        const transportOptions = {
+            url: 'ws://127.0.0.1:9898',
+            wsCreator: (url) => {
+                return new WebSocket(url);
+            },
+        };
+        const setup = {
+            keepAlive: 1000000,
+            lifetime: 100000,
+            dataMimeType: 'text/plain',
+            metadataMimeType: 'text/plain',
+        };
+        const transport = new RSocketWebsocketClient(transportOptions);
+        const client = new RSocketClient({ setup, transport });
+        return await client.connect();
+    }
 
     form.addEventListener('submit', async (event) => {
         var url = document.getElementById("url").value;
         event.preventDefault();
-        var request = {'url':url}
-        socket.send(JSON.stringify(request))
-        socket.onmessage = (event) => {
-            let message = event.data;
-            resultsh.innerHTML = "<a href=" + url + ">" + message + "  </a>";
-            console.log(message)
-            socket.send(JSON.stringify(request))
-            socket.onmessage = (event) => {
-                let message = event.data;
-                resultsh.innerHTML = "<a href=" + url + ">" + message + "  </a>";
-                console.log(message)
-            };
-        };
+        const rsocket = await connect();
+        const start = now();
+        const interval = setInterval(() => {
+            rsocket.requestResponse({ data: url }).subscribe({
+                onComplete: (response) => {
+                    resultsh.innerHTML = "<a href='" + url + "'>" + response.data + "  </a>";
+                    console.log(response);
+                },
+                onError: (error) => {
+                    console.error(error);
+                },
+                onSubscribe: (cancel) => {
+                    /* call cancel() to stop onComplete/onError */
+                },
+            });
 
+        }, );
     });
 
     const longform = document.querySelector('#long-form');
@@ -85,7 +97,7 @@
             },
         });
         const data = await response.json();
-        resultlong.innerHTML = "<a href=" + data.Link + ">" + data.Link + " </a>";
+        resultlong.innerHTML = "<a href='" + data.Link + "'>" + data.Link + " </a>";
         console.log(data)
     });
 </script>
