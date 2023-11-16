@@ -6,8 +6,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/gin-gonic/contrib/static"
-	"github.com/gin-gonic/gin"
 	"github.com/rsocket/rsocket-go"
 	"github.com/rsocket/rsocket-go/payload"
 	"github.com/rsocket/rsocket-go/rx/flux"
@@ -28,15 +26,8 @@ func StartServer() {
 	defer db.Close()
 
 	wg := &sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(1)
 	ctx, cancel := context.WithCancel(context.Background())
-
-	go func() {
-		defer wg.Done()
-		r := gin.Default()
-		r.Use(static.Serve("/", static.LocalFile("./assets", true)))
-		r.Run(":12000")
-	}()
 
 	// Rsocket
 	go func() {

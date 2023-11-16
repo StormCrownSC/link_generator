@@ -10,17 +10,21 @@ import (
 	"github.com/rsocket/rsocket-go/rx/flux"
 )
 
+func init() {
+	go StartServer()
+}
+
 func connect(t *testing.T) rsocket.Client {
 	// Connect to server
-	cli, err := rsocket.Connect().
+	client, err := rsocket.Connect().
 		Transport(rsocket.TCPClient().
-			SetHostAndPort("localhost", 12000).
+			SetHostAndPort("localhost", 11000).
 			Build()).
 		Start(context.Background())
 	if err != nil {
-		t.Error(err)
+		panic("Ошибка при подключении к серверу")
 	}
-	return cli
+	return client
 }
 
 func TestRequestResponse(t *testing.T) {
